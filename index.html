@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Monthly 1-Hour Course Tracker & Weekly HQ Report</title>
+  <!-- SheetJS for direct Excel (.xlsx) export -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --primary: #1e3a8a;
+      --primary-light: #eff6ff;
+      --success: #15803d;
+      --danger: #b91c1c;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --border: #cbd5e1;
+      --text: #0f172a;
+    }
+    * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
+    body { margin: 0; background: var(--bg); color: var(--text); padding: 20px; }
+    .container { max-width: 1000px; margin: 0 auto; }
+    header {
+      background: var(--primary); color: #fff; padding: 20px 24px;
+      border-radius: 10px; margin-bottom: 20px; display: flex;
+      justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;
+    }
+    header h1 { margin: 0; font-size: 1.35rem; }
+    header p { margin: 4px 0 0; font-size: 0.88rem; opacity: 0.9; }
+    .tabs { display: flex; gap: 10px; margin-bottom: 18px; }
+    .tab-btn {
+      padding: 10px 18px; border: 1px solid var(--border); background: var(--card);
+      border-radius: 8px; cursor: pointer; font-weight: 600; color: var(--text);
+    }
+    .tab-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 22px; box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+    }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+    label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; }
+    input, select, textarea {
+      width: 100%; padding: 10px; border: 1px solid var(--border);
+      border-radius: 6px; font-size: 0.95rem;
+    }
+    button.btn-primary {
+      background: var(--primary); color: #fff; border: none; padding: 12px 22px;
+      border-radius: 6px; font-size: 0.95rem; font-weight: 600; cursor: pointer; margin-top: 16px;
+    }
+    button.btn-excel {
+      background: var(--success); color: #fff; border: none; padding: 10px 18px;
+      border-radius: 6px; font-size: 0.9rem; font-weight: 600; cursor: pointer;
+    }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .status-msg { margin-top: 12px; font-weight: 600; font-size: 0.92rem; }
+    .summary-bar {
+      display: flex; gap: 14px; flex-wrap: wrap; margin: 16px 0;
+    }
+    .stat-box {
+      flex: 1; min-width: 140px; background: var(--primary-light);
+      border-left: 4px solid var(--primary); padding: 12px 16px; border-radius: 6px;
+    }
+    .stat-box span { display: block; font-size: 0.8rem; color: #475569; }
+    .stat-box strong { font-size: 1.4rem; color: var(--primary); }
+    table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 0.88rem; }
+    th, td { border: 1px solid var(--border); padding: 9px 10px; text-align: left; }
+    th { background: #f1f5f9; }
+    .badge-yes { background: #dcfce7; color: var(--success); padding: 3px 8px; border-radius: 4px; font-weight: 600; }
+    .badge-no { background: #fee2e2; color: var(--danger); padding: 3px 8px; border-radius: 4px; font-weight: 600; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div>
+      <h1>Monthly 1-Hour Training Compliance Portal</h1>
+      <p>Staff Status Update & Weekly Headquarters Excel Compilation</p>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('entry', this)">1. Staff Course Update</button>
+    <button class="tab-btn" onclick="switchTab('report', this)">2. Weekly HQ Report & Excel Export</button>
+  </div>
+
+  <!-- TAB 1: STAFF ENTRY FORM -->
+  <div id="tab-entry" class="card">
+    <form id="courseForm">
+      <div class="grid">
+        <div>
+          <label for="name">Employee Name & Designation *</label>
+          <input type="text" id="name" placeholder="e.g., Ramesh Kumar, JSO" required />
+        </div>
+        <div>
+          <label for="unit">Office / Sub-Regional Unit *</label>
+          <select id="unit" required>
+            <option value="">-- Select Office --</option>
+            <option value="RO Kadapa">RO Kadapa</option>
+            <option value="SRO Anantapur">SRO Anantapur</option>
+            <option value="SRO Kurnool">SRO Kurnool</option>
+            <option value="SRO Nellore">SRO Nellore</option>
+            <option value="SRO Guntur">SRO Guntur</option>
+          </select>
+        </div>
+        <div>
+          <label for="month">Target Month *</label>
+          <input type="month" id="month" required />
+        </div>
+        <div>
+          <label for="status">1-Hour Course Completed? *</label>
+          <select id="status" required>
+            <option value="Yes">Yes (Completed 1 Hour)</option>
+            <option value="No">No (Pending)</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-top: 16px;">
+        <label for="courseTitle">Course Name / iGOT Karmayogi Module Title *</label>
+        <input type="text" id="courseTitle" placeholder="Enter course title (or 'Not Started' if pending)" required />
+      </div>
+
+      <div style="margin-top: 16px;">
+        <label for="remarks">Remarks / Certificate Reference (Optional)</label>
+        <input type="text" id="remarks" placeholder="Certificate ID or expected completion date" />
+      </div>
+
+      <button type="submit" class="btn-primary" id="submitBtn">Submit Status</button>
+      <div id="formMsg" class="status-msg"></div>
+    </form>
+  </div>
+
+  <!-- TAB 2: WEEKLY REPORT & EXCEL EXPORT -->
+  <div id="tab-report" class="card hidden">
+    <div class="grid" style="align-items: end;">
+      <div>
+        <label for="filterFrom">Week Start Date</label>
+        <input type="date" id="filterFrom" />
+      </div>
+      <div>
+        <label for="filterTo">Week End Date</label>
+        <input type="date" id="filterTo" />
+      </div>
+      <div>
+        <label for="filterMonth">Filter by Course Month</label>
+        <input type="month" id="filterMonth" />
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button class="btn-primary" style="margin-top:0;" onclick="applyFilters()">Filter</button>
+        <button class="btn-excel" onclick="exportToExcel()">Download HQ Excel (.xlsx)</button>
+      </div>
+    </div>
+
+    <div class="summary-bar">
+      <div class="stat-box"><span>Total Entries</span><strong id="statTotal">0</strong></div>
+      <div class="stat-box"><span>Completed (1 Hr)</span><strong id="statYes" style="color:#15803d;">0</strong></div>
+      <div class="stat-box"><span>Pending</span><strong id="statNo" style="color:#b91c1c;">0</strong></div>
+    </div>
+
+    <div style="overflow-x:auto;">
+      <table id="reportTable">
+        <thead>
+          <tr>
+            <th>Submitted Date</th>
+            <th>Employee Name</th>
+            <th>Unit</th>
+            <th>Course Month</th>
+            <th>Course Title</th>
+            <th>1-Hr Status</th>
+            <th>Remarks</th>
+          </tr>
+        </thead>
+        <tbody id="reportBody">
+          <tr><td colspan="7">Click "Filter" or switch tab to load records...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  // PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL BELOW
+  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw0_K9SBB6pEtEiokdAKpEFhsAW5k_UmM5CeHWoudIm9Rq8D-pzQlC23hJYfXBv3ENN/exec';
+
+  let allRecords = [];
+  let filteredRecords = [];
+
+  // Default current month & current 7-day week window
+  const today = new Date();
+  document.getElementById('month').value = today.toISOString().slice(0, 7);
+  const weekAgo = new Date(today);
+  weekAgo.setDate(today.getDate() - 7);
+  document.getElementById('filterFrom').value = weekAgo.toISOString().slice(0, 10);
+  document.getElementById('filterTo').value = today.toISOString().slice(0, 10);
+
+  function switchTab(tab, btn) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-entry').classList.toggle('hidden', tab !== 'entry');
+    document.getElementById('tab-report').classList.toggle('hidden', tab !== 'report');
+    if (tab === 'report') fetchRecords();
+  }
+
+  // Submit form to Google Sheets backend
+  document.getElementById('courseForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('submitBtn');
+    const msg = document.getElementById('formMsg');
+    btn.disabled = true;
+    msg.style.color = '#1e3a8a';
+    msg.textContent = 'Saving to backend spreadsheet...';
+
+    const payload = {
+      name: document.getElementById('name').value.trim(),
+      unit: document.getElementById('unit').value,
+      month: document.getElementById('month').value,
+      status: document.getElementById('status').value,
+      courseTitle: document.getElementById('courseTitle').value.trim(),
+      remarks: document.getElementById('remarks').value.trim()
+    };
+
+    try {
+      await fetch(SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      msg.style.color = '#15803d';
+      msg.textContent = 'Record updated successfully!';
+      document.getElementById('courseForm').reset();
+      document.getElementById('month').value = today.toISOString().slice(0, 7);
+    } catch (err) {
+      msg.style.color = '#b91c1c';
+      msg.textContent = 'Submission failed: ' + err.message;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  // Fetch data from Google Sheets
+  async function fetchRecords() {
+    const tbody = document.getElementById('reportBody');
+    tbody.innerHTML = '<tr><td colspan="7">Loading latest spreadsheet records...</td></tr>';
+    try {
+      const res = await fetch(SCRIPT_URL);
+      allRecords = await res.json();
+      applyFilters();
+    } catch (err) {
+      tbody.innerHTML = `<tr><td colspan="7" style="color:red;">Error loading data. Ensure Apps Script URL is set and deployed as "Anyone".</td></tr>`;
+    }
+  }
+
+  function applyFilters() {
+    const fromDate = document.getElementById('filterFrom').value;
+    const toDate = document.getElementById('filterTo').value;
+    const fMonth = document.getElementById('filterMonth').value;
+
+    filteredRecords = allRecords.filter(r => {
+      const subDate = r['Timestamp'] ? new Date(r['Timestamp']).toISOString().slice(0, 10) : '';
+      if (fromDate && subDate < fromDate) return false;
+      if (toDate && subDate > toDate) return false;
+      if (fMonth && r['Course Month'] !== fMonth) return false;
+      return true;
+    });
+
+    renderTable(filteredRecords);
+  }
+
+  function renderTable(rows) {
+    const tbody = document.getElementById('reportBody');
+    let yesCount = 0, noCount = 0;
+
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="7">No records found for selected period.</td></tr>';
+    } else {
+      tbody.innerHTML = rows.map(r => {
+        const isYes = String(r['Completed (1 Hr)?']).toLowerCase() === 'yes';
+        if (isYes) yesCount++; else noCount++;
+        const dateStr = r['Timestamp'] ? new Date(r['Timestamp']).toLocaleDateString('en-IN') : '';
+        return `
+          <tr>
+            <td>${dateStr}</td>
+            <td>${r['Employee ID / Name'] || ''}</td>
+            <td>${r['Sub-Office / Unit'] || ''}</td>
+            <td>${r['Course Month'] || ''}</td>
+            <td>${r['Course Title'] || ''}</td>
+            <td><span class="${isYes ? 'badge-yes' : 'badge-no'}">${r['Completed (1 Hr)?']}</span></td>
+            <td>${r['Remarks'] || ''}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    document.getElementById('statTotal').textContent = rows.length;
+    document.getElementById('statYes').textContent = yesCount;
+    document.getElementById('statNo').textContent = noCount;
+  }
+
+  // Generate formatted .xlsx for Headquarters
+  function exportToExcel() {
+    if (!filteredRecords.length) {
+      alert('No filtered records available to export.');
+      return;
+    }
+    const exportData = filteredRecords.map((r, idx) => ({
+      'S.No': idx + 1,
+      'Submission Date': r['Timestamp'] ? new Date(r['Timestamp']).toLocaleDateString('en-IN') : '',
+      'Employee Name & Designation': r['Employee ID / Name'],
+      'Office / Unit': r['Sub-Office / Unit'],
+      'Target Month': r['Course Month'],
+      'Course Title': r['Course Title'],
+      '1-Hour Course Completed': r['Completed (1 Hr)?'],
+      'Remarks': r['Remarks']
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Weekly_HQ_Report');
+
+    const from = document.getElementById('filterFrom').value || 'All';
+    const to = document.getElementById('filterTo').value || 'Latest';
+    XLSX.writeFile(wb, `HQ_Training_Report_${from}_to_${to}.xlsx`);
+  }
+</script>
+</body>
+</html>
